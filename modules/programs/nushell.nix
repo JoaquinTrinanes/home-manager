@@ -1,8 +1,8 @@
 { config, lib, pkgs, ... }:
-
-with lib;
-
 let
+  inherit (lib)
+    types mkOption mkIf mkMerge mapAttrsToList concatStringsSep
+    literalExpression mkEnableOption mkRemovedOptionModule;
 
   cfg = config.programs.nushell;
 
@@ -39,7 +39,7 @@ let
       };
     });
 in {
-  meta.maintainers = [ maintainers.Philipp-M ];
+  meta.maintainers = [ lib.maintainers.Philipp-M ];
 
   imports = [
     (mkRemovedOptionModule [ "programs" "nushell" "settings" ] ''
