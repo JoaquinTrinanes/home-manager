@@ -1,14 +1,12 @@
 { config, lib, pkgs, ... }:
-
-with lib;
-
 let
-
   cfg = config.programs.starship;
 
   tomlFormat = pkgs.formats.toml { };
 
-  starshipCmd = "${config.home.profileDirectory}/bin/starship";
+  inherit (lib) mkIf mkOption mkEnableOption types literalExpression;
+
+  starshipCmd = lib.getExe cfg.package;
 
 in {
   meta.maintainers = [ ];
@@ -117,20 +115,20 @@ in {
       end
     '';
 
-    programs.nushell = mkIf cfg.enableNushellIntegration {
+    programs.nushell = let
+      starshipCacheDir = "${config.xdg.cacheHome}/starship";
+      starshipCacheFile = "${starshipCacheDir}/init.nu";
+    in mkIf cfg.enableNushellIntegration {
       # Unfortunately nushell doesn't allow conditionally sourcing nor
       # conditionally setting (global) environment variables, which is why the
       # check for terminal compatibility (as seen above for the other shells) is
       # not done here.
       extraEnv = ''
-        let starship_cache = "${config.xdg.cacheHome}/starship"
-        if not ($starship_cache | path exists) {
-          mkdir $starship_cache
-        }
-        ${starshipCmd} init nu | save --force ${config.xdg.cacheHome}/starship/init.nu
+        mkdir "${starshipCacheDir}"
+        ${starshipCmd} init nu | save --force ${starshipCacheFile}
       '';
       extraConfig = ''
-        use ${config.xdg.cacheHome}/starship/init.nu
+        use ${starshipCacheFile}
       '';
     };
   };
