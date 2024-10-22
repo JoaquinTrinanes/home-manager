@@ -3,13 +3,7 @@
 with lib;
 
 let
-
   cfg = config.programs.nushell;
-
-  configDir = if pkgs.stdenv.isDarwin && !config.xdg.enable then
-    "Library/Application Support/nushell"
-  else
-    "${config.xdg.configHome}/nushell";
 
   linesOrSource = name:
     types.submodule ({ config, ... }: {
@@ -54,11 +48,14 @@ in {
   options.programs.nushell = {
     enable = mkEnableOption "nushell";
 
-    package = mkOption {
-      type = types.package;
-      default = pkgs.nushell;
-      defaultText = literalExpression "pkgs.nushell";
-      description = "The package to use for nushell.";
+    package = mkPackageOption pkgs "nushell" { };
+
+    configDir = mkOption {
+      type = types.path;
+      readOnly = true;
+      description = ''
+        Location of the configuration files.
+      '';
     };
 
     configFile = mkOption {
@@ -170,6 +167,12 @@ in {
   config = mkIf cfg.enable {
     home.packages = [ cfg.package ];
 
+    programs.nushell.configDir =
+      if pkgs.stdenv.isDarwin && !config.xdg.enable then
+        "${config.home.homeDirectory}/Library/Application Support/nushell"
+      else
+        "${config.xdg.configHome}/nushell";
+
     home.file = mkMerge [
       (let
         writeConfig = cfg.configFile != null || cfg.extraConfig != ""
@@ -178,7 +181,7 @@ in {
         aliasesStr = concatStringsSep "\n"
           (mapAttrsToList (k: v: "alias ${k} = ${v}") cfg.shellAliases);
       in mkIf writeConfig {
-        "${configDir}/config.nu".text = mkMerge [
+        "${cfg.configDir}/config.nu".text = mkMerge [
           (mkIf (cfg.configFile != null) cfg.configFile.text)
           cfg.extraConfig
           aliasesStr
@@ -191,14 +194,14 @@ in {
           load-env ${hm.nushell.toNushell { } cfg.environmentVariables}
         '';
       in mkIf (cfg.envFile != null || cfg.extraEnv != "" || hasEnvVars) {
-        "${configDir}/env.nu".text = mkMerge [
+        "${cfg.configDir}/env.nu".text = mkMerge [
           (mkIf (cfg.envFile != null) cfg.envFile.text)
           cfg.extraEnv
           envVarsStr
         ];
       })
       (mkIf (cfg.loginFile != null || cfg.extraLogin != "") {
-        "${configDir}/login.nu".text = mkMerge [
+        "${cfg.configDir}/login.nu".text = mkMerge [
           (mkIf (cfg.loginFile != null) cfg.loginFile.text)
           cfg.extraLogin
         ];
